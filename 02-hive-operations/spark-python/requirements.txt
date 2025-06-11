@@ -1,0 +1,7 @@
+pyspark==3.5.0
+py4j==0.10.9.7
+pandas==2.1.4
+numpy==1.24.4
+pyarrow==14.0.2
+hdfs3==0.3.1
+findspark==2.0.1 
