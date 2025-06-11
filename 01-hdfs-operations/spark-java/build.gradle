@@ -1,0 +1,156 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'eclipse'
+    id 'idea'
+}
+
+group = 'io.acceldata'
+version = '1.0.0'
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repository.cloudera.com/artifactory/cloudera-repos/"
+    }
+}
+
+ext {
+    sparkVersion = '3.5.0'
+    hadoopVersion = '3.3.4'
+    slf4jVersion = '2.0.9'
+}
+
+dependencies {
+    // Spark Core
+    implementation "org.apache.spark:spark-core_2.12:${sparkVersion}"
+    implementation "org.apache.spark:spark-sql_2.12:${sparkVersion}"
+    
+    // Hadoop HDFS and Security
+    implementation "org.apache.hadoop:hadoop-client:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+    
+    // Kerberos authentication
+    implementation "org.apache.hadoop:hadoop-client-api:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-client-runtime:${hadoopVersion}"
+    
+    // Logging
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+    
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "org.apache.spark:spark-core_2.12:${sparkVersion}:tests"
+    testImplementation "org.apache.spark:spark-sql_2.12:${sparkVersion}:tests"
+}
+
+application {
+    mainClass = 'io.acceldata.examples.hdfs.HDFSOperationsExample'
+}
+
+// Task to run HDFS read example
+task runHDFSRead(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.hdfs.HDFSReadExample'
+    args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://localhost:9000/data/sample.txt']
+}
+
+// Task to run HDFS write example
+task runHDFSWrite(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.hdfs.HDFSWriteExample'
+    args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://localhost:9000/data/output']
+}
+
+// Task to run comprehensive HDFS operations
+task runHDFSOperations(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.hdfs.HDFSOperationsExample'
+}
+
+jar {
+    archiveBaseName = 'hdfs-operations-examples'
+    archiveVersion = version
+    
+    manifest {
+        attributes(
+            'Main-Class': 'io.acceldata.examples.hdfs.HDFSOperationsExample',
+            'Implementation-Title': 'HDFS Operations Examples',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Acceldata Inc.'
+        )
+    }
+}
+
+// Fat JAR for Spark submission
+task fatJar(type: Jar) {
+    archiveBaseName = 'hdfs-operations-examples-fat'
+    archiveVersion = version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    manifest {
+        attributes(
+            'Main-Class': 'io.acceldata.examples.hdfs.HDFSOperationsExample',
+            'Implementation-Title': 'HDFS Operations Examples',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Acceldata Inc.'
+        )
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation']
+}
+
+test {
+    useJUnit()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// Docker build tasks for containerized deployment
+task buildDockerImage(type: Exec) {
+    dependsOn fatJar
+    description = 'Build Docker image for Kubernetes deployment'
+    group = 'docker'
+    
+    commandLine 'docker', 'build', 
+        '-t', "acceldata/hdfs-operations-examples:${version}",
+        '-t', "acceldata/hdfs-operations-examples:latest",
+        '.'
+}
+
+task pushDockerImage(type: Exec) {
+    dependsOn buildDockerImage
+    description = 'Push Docker image to registry'
+    group = 'docker'
+    
+    commandLine 'docker', 'push', "acceldata/hdfs-operations-examples:${version}"
+}
+
+task runDockerContainer(type: Exec) {
+    dependsOn buildDockerImage
+    description = 'Run Docker container locally for testing'
+    group = 'docker'
+    
+    commandLine 'docker', 'run', '--rm',
+        '-v', '/etc/krb5.conf:/etc/krb5.conf:ro',
+        '-v', '/etc/hadoop/conf:/etc/hadoop/conf:ro',
+        '-v', '/etc/user.keytab:/etc/user.keytab:ro',
+        "acceldata/hdfs-operations-examples:${version}"
+} 
