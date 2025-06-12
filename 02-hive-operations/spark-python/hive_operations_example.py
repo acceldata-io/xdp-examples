@@ -3,6 +3,7 @@ import time
 import threading
 import logging
 from pyspark.sql import SparkSession
+from pyspark import SparkConf, SparkContext
 
 # Logger setup
 def setup_logger():
@@ -18,41 +19,95 @@ def setup_logger():
 logger = setup_logger()
 
 # Read Kerberos and JDBC details from environment
-KERBEROS_KEYTAB_PATH = os.getenv("KERBEROS_KEYTAB_PATH","/etc/user.keytab")
-KERBEROS_PRINCIPAL =  os.getenv("KERBEROS_PRINCIPAL","rahul@ADSRE.COM")
-HIVE_JDBC_URL = os.getenv("HIVE_JDBC_URL","jdbc:hive2://qedatanode2:2181,qenamenode2:2181,qenamenode1:2181,qedatanode1:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2")  # e.g. "jdbc:hive2://hive-server:10000/default"
-namenode = os.getenv("NAMENODE","qenamenode1")
-port = os.getenv("PORT","8020")
+KERBEROS_KEYTAB_PATH = os.getenv("KERBEROS_KEYTAB_PATH", "/etc/user.keytab")
+KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "hdfs-adocqecluster@ADSRE.COM")
+HIVE_KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "hive/_HOST@ADSRE.COM")
+logger.info(f"KERBEROS_KEYTAB_PATH: {KERBEROS_KEYTAB_PATH}")
+logger.info(f"KERBEROS_PRINCIPAL: {KERBEROS_PRINCIPAL}")
+HIVE_JDBC_URL = os.getenv("HIVE_JDBC_URL", "jdbc:mysql://qenamenode1:3306/hive")
+namenode = os.getenv("NAMENODE", "qenamenode1")
+port = os.getenv("PORT", "8020")
+
 if not KERBEROS_KEYTAB_PATH or not KERBEROS_PRINCIPAL or not HIVE_JDBC_URL:
     raise ValueError("KERBEROS_KEYTAB_PATH, KERBEROS_PRINCIPAL, and HIVE_JDBC_URL must be set in environment variables.")
 
 class HiveKerberosClient:
     def __init__(self):
         self.logger = logger
-        self.spark = SparkSession.builder.enableHiveSupport().config("spark.sql.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse") \
-        .config("spark.hadoop.hive.metastore.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse") \
-        .getOrCreate()
-        self._authenticate_kerberos()
+        self.spark = None
+        self._setup_spark_with_kerberos()
 
+    def _setup_spark_with_kerberos(self):
+        """Set up Spark with proper Kerberos configuration"""
+        try:
+            self.logger.info("Setting up Spark with Kerberos authentication...")
+
+            # Create Spark configuration with Kerberos settings
+            conf = SparkConf()
+            #conf.set("spark.sql.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse")
+            #conf.set("spark.hadoop.hive.metastore.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse")
+
+            # Critical Kerberos configurations
+            conf.set("spark.hadoop.hadoop.security.authentication", "kerberos")
+            conf.set("spark.hadoop.hadoop.security.authorization", "true")
+            conf.set("spark.hadoop.hive.metastore.sasl.enabled", "true")
+            conf.set("spark.hadoop.hive.metastore.kerberos.keytab.file", KERBEROS_KEYTAB_PATH)
+            conf.set("spark.hadoop.hive.metastore.kerberos.principal", HIVE_KERBEROS_PRINCIPAL)
+
+            # Additional Hadoop client configurations
+            #conf.set("spark.hadoop.dfs.nameservices", namenode)
+            #conf.set("spark.hadoop.fs.defaultFS", f"hdfs://{namenode}:{port}")
+
+            # Create SparkSession with Kerberos-enabled configuration
+            self.spark = SparkSession.builder \
+                .config(conf=conf) \
+                .enableHiveSupport() \
+                .getOrCreate()
+
+            # Now authenticate with Kerberos BEFORE any operations
+            self._authenticate_kerberos()
+
+            self.logger.info("Spark session created with Kerberos authentication")
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup Spark with Kerberos: {e}")
+            raise
 
     def _authenticate_kerberos(self):
         """Kerberos authentication with background renewal"""
         try:
             self.logger.info("Authenticating with Kerberos...")
+
+            # Get Hadoop configuration and set security
+            hadoop_conf = self.spark.sparkContext._jsc.hadoopConfiguration()
+            #hadoop_conf.set("hadoop.security.authentication", "kerberos")
+            #hadoop_conf.set("hadoop.security.authorization", "true")
+
+            # Set up UserGroupInformation
             UGI = self.spark.sparkContext._jvm.org.apache.hadoop.security.UserGroupInformation
-            UGI.setConfiguration(self.spark.sparkContext._jsc.hadoopConfiguration())
+            UGI.setConfiguration(hadoop_conf)
+
+            # Login from keytab
             UGI.loginUserFromKeytab(KERBEROS_PRINCIPAL, KERBEROS_KEYTAB_PATH)
+
+            # Verify authentication
+            current_user = UGI.getCurrentUser()
+            self.logger.info(f"Authenticated as: {current_user.getUserName()}")
+            self.logger.info(f"Authentication method: {current_user.getAuthenticationMethod()}")
 
             def renew_auth():
                 while True:
-                    time.sleep(300)
+                    time.sleep(300)  # Renew every 5 minutes
                     try:
+                        self.logger.info("Renewing Kerberos authentication...")
                         UGI.loginUserFromKeytab(KERBEROS_PRINCIPAL, KERBEROS_KEYTAB_PATH)
+                        self.logger.info("Kerberos authentication renewed successfully")
                     except Exception as e:
                         self.logger.error(f"Auth renewal failed: {e}")
 
             threading.Thread(target=renew_auth, daemon=True).start()
             self.logger.info("Kerberos authentication successful")
+
         except Exception as e:
             self.logger.error(f"Kerberos authentication failed: {e}")
             raise
@@ -60,42 +115,53 @@ class HiveKerberosClient:
     def run(self):
         db = "sample_db"
         table = "sample_table"
-        self.logger.info("Creating database if not exists...")
-        self.spark.sql(f"CREATE DATABASE IF NOT EXISTS {db}")
-        self.spark.sql(f"DESCRIBE DATABASE EXTENDED {db};")
-        self.logger.info("Using database...")
-        self.spark.sql(f"USE {db}")
-        self.logger.info("Creating table if not exists...")
-        self.spark.sql(f"""
-            CREATE TABLE IF NOT EXISTS {db}.{table} (
-                id INT,
-                name STRING
-            )
-            STORED AS PARQUET
-        """)
-        # Wait for table creation to finish
-        self.spark.catalog.refreshTable(f"{db}.{table}")
 
-        self.logger.info("Inserting rows...")
-        self.spark.sql(f"INSERT INTO {db}.{table} VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
-        # Wait for insert to finish
-        self.spark.sql(f"SELECT COUNT(*) FROM {db}.{table}").collect()
+        try:
+            self.logger.info("Creating database if not exists...")
+            self.spark.sql(f"CREATE DATABASE IF NOT EXISTS {db}")
 
-        self.logger.info("Reading rows...")
-        df = self.spark.sql(f"SELECT * FROM {db}.{table} LIMIT 5")
-        df.show()
+            self.logger.info("Describing database...")
+            self.spark.sql(f"DESCRIBE DATABASE EXTENDED {db}").show()
 
-        # self.logger.info("Dropping table...")
-        # self.spark.sql(f"DROP TABLE {db}.{table}")
+            self.logger.info("Using database...")
+            self.spark.sql(f"USE {db}")
 
-        self.logger.info("All operations completed.")
+            self.logger.info("Creating table if not exists...")
+            self.spark.sql(f"""
+                CREATE TABLE IF NOT EXISTS {db}.{table} (
+                    id INT,
+                    name STRING
+                )
+                STORED AS PARQUET
+            """)
+
+            # Wait for table creation to finish
+            self.spark.catalog.refreshTable(f"{db}.{table}")
+
+            self.logger.info("Inserting rows...")
+            self.spark.sql(f"INSERT INTO {db}.{table} VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
+
+            # Wait for insert to finish
+            count = self.spark.sql(f"SELECT COUNT(*) FROM {db}.{table}").collect()[0][0]
+            self.logger.info(f"Table now has {count} rows")
+
+            self.logger.info("Reading rows...")
+            df = self.spark.sql(f"SELECT * FROM {db}.{table} LIMIT 5")
+            df.show()
+
+            self.logger.info("All operations completed successfully.")
+
+        except Exception as e:
+            self.logger.error(f"Database operations failed: {e}")
+            raise
 
     def stop(self):
-        self.spark.stop()
+        if self.spark:
+            self.spark.stop()
 
 if __name__ == "__main__":
     client = HiveKerberosClient()
     try:
         client.run()
     finally:
-        client.stop() 
+        client.stop()
