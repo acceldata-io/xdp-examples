@@ -20,7 +20,8 @@ logger = setup_logger()
 
 # Read Kerberos and JDBC details from environment
 KERBEROS_KEYTAB_PATH = os.getenv("KERBEROS_KEYTAB_PATH", "/etc/user.keytab")
-KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "hdfs-adocqecluster@ADSRE.COM")
+
+KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "rahulshirgave@ADSRE.COM")
 HIVE_KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "hive/_HOST@ADSRE.COM")
 logger.info(f"KERBEROS_KEYTAB_PATH: {KERBEROS_KEYTAB_PATH}")
 logger.info(f"KERBEROS_PRINCIPAL: {KERBEROS_PRINCIPAL}")
@@ -44,8 +45,6 @@ class HiveKerberosClient:
 
             # Create Spark configuration with Kerberos settings
             conf = SparkConf()
-            #conf.set("spark.sql.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse")
-            #conf.set("spark.hadoop.hive.metastore.warehouse.dir", f"hdfs://{namenode}:{port}/user/hive/warehouse")
 
             # Critical Kerberos configurations
             conf.set("spark.hadoop.hadoop.security.authentication", "kerberos")
@@ -54,9 +53,6 @@ class HiveKerberosClient:
             conf.set("spark.hadoop.hive.metastore.kerberos.keytab.file", KERBEROS_KEYTAB_PATH)
             conf.set("spark.hadoop.hive.metastore.kerberos.principal", HIVE_KERBEROS_PRINCIPAL)
 
-            # Additional Hadoop client configurations
-            #conf.set("spark.hadoop.dfs.nameservices", namenode)
-            #conf.set("spark.hadoop.fs.defaultFS", f"hdfs://{namenode}:{port}")
 
             # Create SparkSession with Kerberos-enabled configuration
             self.spark = SparkSession.builder \
@@ -113,7 +109,7 @@ class HiveKerberosClient:
             raise
 
     def run(self):
-        db = "sample_db"
+        db = "sample_db_hive_python"
         table = "sample_table"
 
         try:
@@ -137,7 +133,7 @@ class HiveKerberosClient:
 
             # Wait for table creation to finish
             self.spark.catalog.refreshTable(f"{db}.{table}")
-
+            self.spark.sql(f"DESCRIBE EXTENDED {db}.{table}").show()
             self.logger.info("Inserting rows...")
             self.spark.sql(f"INSERT INTO {db}.{table} VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
 
@@ -148,8 +144,11 @@ class HiveKerberosClient:
             self.logger.info("Reading rows...")
             df = self.spark.sql(f"SELECT * FROM {db}.{table} LIMIT 5")
             df.show()
-
+            # drop table and database
+            # self.spark.sql(f"DROP TABLE IF EXISTS {db}.{table}").show()
+            # self.spark.sql(f"DROP DATABASE IF EXISTS {db}").show()
             self.logger.info("All operations completed successfully.")
+
 
         except Exception as e:
             self.logger.error(f"Database operations failed: {e}")
