@@ -21,13 +21,14 @@ logger = setup_logger()
 # Read Kerberos and JDBC details from environment
 KERBEROS_KEYTAB_PATH = os.getenv("KERBEROS_KEYTAB_PATH", "/etc/user.keytab")
 
-KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "rahulshirgave@ADSRE.COM")
+KERBEROS_PRINCIPAL = os.getenv("KERBEROS_PRINCIPAL", "rahulshirgave@ADSRE.COM")
 HIVE_KERBEROS_PRINCIPAL = os.getenv("HIVE_KERBEROS_PRINCIPAL", "hive/_HOST@ADSRE.COM")
 logger.info(f"KERBEROS_KEYTAB_PATH: {KERBEROS_KEYTAB_PATH}")
 logger.info(f"KERBEROS_PRINCIPAL: {KERBEROS_PRINCIPAL}")
-HIVE_JDBC_URL = os.getenv("HIVE_JDBC_URL", "jdbc:mysql://qenamenode1:3306/hive")
 namenode = os.getenv("NAMENODE", "qenamenode1")
 port = os.getenv("PORT", "8020")
+HIVE_JDBC_URL = os.getenv("HIVE_JDBC_URL", f"jdbc:mysql://${namenode}:${port}/hive")
+
 
 if not KERBEROS_KEYTAB_PATH or not KERBEROS_PRINCIPAL or not HIVE_JDBC_URL:
     raise ValueError("KERBEROS_KEYTAB_PATH, KERBEROS_PRINCIPAL, and HIVE_JDBC_URL must be set in environment variables.")
@@ -47,6 +48,7 @@ class HiveKerberosClient:
             conf = SparkConf()
 
             # Critical Kerberos configurations
+            # conf.set("spark.sql.warehouse.dir","hdfs://qenamenode1:8020/user/rahulshirgave/warehouse")  # Use HDFS path for Hive warehouse
             conf.set("spark.hadoop.hadoop.security.authentication", "kerberos")
             conf.set("spark.hadoop.hadoop.security.authorization", "true")
             conf.set("spark.hadoop.hive.metastore.sasl.enabled", "true")
@@ -109,7 +111,7 @@ class HiveKerberosClient:
             raise
 
     def run(self):
-        db = "sample_db_hive_python"
+        db = "sample_db_hive_python1"
         table = "sample_table"
 
         try:
