@@ -1,0 +1,155 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'eclipse'
+    id 'idea'
+}
+
+group = 'io.acceldata'
+version = '1.0.0'
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repository.cloudera.com/artifactory/cloudera-repos/"
+    }
+}
+
+ext {
+    sparkVersion = '3.5.0'
+    mysqlConnectorVersion = '8.0.33'
+    hikariCpVersion = '5.0.1'
+    slf4jVersion = '2.0.9'
+}
+
+dependencies {
+    // Spark Core
+    implementation "org.apache.spark:spark-core_2.12:${sparkVersion}"
+    implementation "org.apache.spark:spark-sql_2.12:${sparkVersion}"
+    
+    // MySQL JDBC Driver
+    implementation "mysql:mysql-connector-java:${mysqlConnectorVersion}"
+    
+    // Connection Pooling
+    implementation "com.zaxxer:HikariCP:${hikariCpVersion}"
+    
+    // Logging
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+    
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "org.apache.spark:spark-core_2.12:${sparkVersion}:tests"
+    testImplementation "org.apache.spark:spark-sql_2.12:${sparkVersion}:tests"
+    testImplementation 'org.testcontainers:mysql:1.19.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
+}
+
+application {
+    mainClass = 'io.acceldata.examples.mysql.MySQLOperationsExample'
+}
+
+// Task to run MySQL read example
+task runMySQLRead(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.mysql.MySQLReadExample'
+    args = project.hasProperty('mysqlUrl') ? [project.property('mysqlUrl')] : ['jdbc:mysql://localhost:3306/acceldata_examples']
+}
+
+// Task to run MySQL write example
+task runMySQLWrite(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.mysql.MySQLWriteExample'
+    args = project.hasProperty('mysqlUrl') ? [project.property('mysqlUrl')] : ['jdbc:mysql://localhost:3306/acceldata_examples']
+}
+
+// Task to run comprehensive MySQL operations
+task runMySQLOperations(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.acceldata.examples.mysql.MySQLOperationsExample'
+}
+
+jar {
+    archiveBaseName = 'mysql-operations-examples'
+    archiveVersion = version
+    
+    manifest {
+        attributes(
+            'Main-Class': 'io.acceldata.examples.mysql.MySQLOperationsExample',
+            'Implementation-Title': 'MySQL Operations Examples',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Acceldata Inc.'
+        )
+    }
+}
+
+// Fat JAR for Spark submission
+task fatJar(type: Jar) {
+    archiveBaseName = 'mysql-operations-examples-fat'
+    archiveVersion = version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    manifest {
+        attributes(
+            'Main-Class': 'io.acceldata.examples.mysql.MySQLOperationsExample',
+            'Implementation-Title': 'MySQL Operations Examples',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Acceldata Inc.'
+        )
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation']
+}
+
+test {
+    useJUnit()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// Docker build tasks for containerized deployment
+task buildDockerImage(type: Exec) {
+    dependsOn fatJar
+    description = 'Build Docker image for Kubernetes deployment'
+    group = 'docker'
+    
+    commandLine 'docker', 'build', 
+        '-t', "acceldata/mysql-operations-examples:${version}",
+        '-t', "acceldata/mysql-operations-examples:latest",
+        '.'
+}
+
+task pushDockerImage(type: Exec) {
+    dependsOn buildDockerImage
+    description = 'Push Docker image to registry'
+    group = 'docker'
+    
+    commandLine 'docker', 'push', "acceldata/mysql-operations-examples:${version}"
+}
+
+task runDockerContainer(type: Exec) {
+    dependsOn buildDockerImage
+    description = 'Run Docker container locally for testing'
+    group = 'docker'
+    
+    commandLine 'docker', 'run', '--rm',
+        '-e', 'MYSQL_URL=jdbc:mysql://mysql-server:3306/acceldata_examples',
+        '-e', 'MYSQL_USER=spark_user',
+        '-e', 'MYSQL_PASSWORD=spark_password',
+        "acceldata/mysql-operations-examples:${version}"
+} 
