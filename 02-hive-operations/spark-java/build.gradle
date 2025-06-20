@@ -1,0 +1,223 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example.spark'
+version = '1.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    sparkVersion = '3.5.5'
+    hadoopVersion = '3.3.6'
+    slf4jVersion = '2.0.9'
+    logbackVersion = '1.4.14'
+    hiveVersion = '2.3.9'  // Explicit Hive version
+}
+
+configurations {
+    all {
+        // Exclude conflicting logging dependencies
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
+        exclude group: 'ch.qos.logback', module: 'logback-classic'
+        exclude group: 'ch.qos.logback', module: 'logback-core'
+        
+        // Force resolution strategy for DataNucleus
+        resolutionStrategy {
+            force 'org.datanucleus:datanucleus-core:4.1.17'
+            force 'org.datanucleus:datanucleus-api-jdo:4.2.4'
+            force 'org.datanucleus:datanucleus-rdbms:4.1.19'
+            force 'javax.jdo:jdo-api:3.0.1'
+        }
+    }
+}
+
+dependencies {
+    // Spark dependencies WITHOUT Hive initially
+    implementation("org.apache.spark:spark-core_2.12:${sparkVersion}") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    implementation("org.apache.spark:spark-sql_2.12:${sparkVersion}") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    
+    // DataNucleus dependencies FIRST (before Hive)
+    implementation 'org.datanucleus:datanucleus-core:4.1.17'
+    implementation 'org.datanucleus:datanucleus-api-jdo:4.2.4'
+    implementation 'org.datanucleus:datanucleus-rdbms:4.1.19'
+    implementation 'javax.jdo:jdo-api:3.0.1'
+    
+    // Now add Hive with DataNucleus exclusions
+    implementation("org.apache.spark:spark-hive_2.12:${sparkVersion}") {
+        exclude group: 'org.datanucleus', module: 'datanucleus-core'
+        exclude group: 'org.datanucleus', module: 'datanucleus-api-jdo' 
+        exclude group: 'org.datanucleus', module: 'datanucleus-rdbms'
+        exclude group: 'javax.jdo', module: 'jdo-api'
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    
+    // Hadoop dependencies for Kerberos
+    implementation("org.apache.hadoop:hadoop-auth:${hadoopVersion}") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    implementation("org.apache.hadoop:hadoop-common:${hadoopVersion}") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    
+    // Database drivers
+    implementation 'mysql:mysql-connector-java:8.0.33'
+    
+    // Logging dependencies (add back the ones we need)
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "ch.qos.logback:logback-classic:${logbackVersion}"
+    implementation "ch.qos.logback:logback-core:${logbackVersion}"
+    
+    // Test dependencies
+    testImplementation 'junit:junit:4.13.2'
+}
+
+application {
+    mainClass = 'com.example.spark.hive.HiveKerberosClient'
+    applicationDefaultJvmArgs = [
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens=java.base/java.io=ALL-UNNAMED',
+        '--add-opens=java.base/java.net=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+        '--add-opens=java.base/sun.nio.ch=ALL-UNNAMED',
+        '--add-opens=java.base/sun.nio.cs=ALL-UNNAMED',
+        '--add-opens=java.base/sun.security.action=ALL-UNNAMED',
+        '--add-opens=java.base/sun.util.calendar=ALL-UNNAMED',
+        '--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+        '--add-opens=java.base/sun.unsafe=ALL-UNNAMED',
+        '--add-opens=java.base/sun.reflect=ALL-UNNAMED',
+        '-Xmx4g',
+        '-XX:+UseG1GC'
+    ]
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'com.example.spark.hive.HiveKerberosClient'
+        )
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    zip64 = true
+}
+
+// Enhanced fat JAR task with better merge strategies
+task fatJar(type: Jar) {
+    zip64 = true
+    archiveClassifier = 'all'
+    archiveBaseName = 'spark-java'
+    archiveVersion = '1.1.0'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    manifest {
+        attributes 'Main-Class': 'com.example.spark.hive.HiveKerberosClient'
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    with jar
+    
+    // Exclude signature files to avoid security exceptions
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/LICENSE*'
+    exclude 'META-INF/NOTICE*'
+    exclude 'META-INF/README*'
+    exclude 'META-INF/CHANGES*'
+    exclude 'about.html'
+    exclude 'plugin.properties'
+    exclude 'parquet.thrift'
+    exclude '**/*.proto'
+    
+    // Handle DataNucleus plugin files properly
+    from(configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {
+        include 'META-INF/services/**'
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+}
+
+// Task to verify DataNucleus dependencies
+task verifyDataNucleus {
+    doLast {
+        println "DataNucleus dependencies:"
+        configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            if (artifact.name.contains('datanucleus') || artifact.name.contains('jdo')) {
+                println "  ${artifact.moduleVersion.id} -> ${artifact.file.name}"
+            }
+        }
+    }
+}
+
+// Task to create run script
+task createRunScript {
+    dependsOn fatJar
+    doLast {
+        def scriptFile = file("run-spark.sh")
+        def jarPath = "build/libs/spark-java-1.1.0-all.jar"
+        
+        def scriptContent = """#!/bin/bash
+java \\
+  --add-opens=java.base/java.lang=ALL-UNNAMED \\
+  --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \\
+  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \\
+  --add-opens=java.base/java.io=ALL-UNNAMED \\
+  --add-opens=java.base/java.net=ALL-UNNAMED \\
+  --add-opens=java.base/java.nio=ALL-UNNAMED \\
+  --add-opens=java.base/java.util=ALL-UNNAMED \\
+  --add-opens=java.base/java.util.concurrent=ALL-UNNAMED \\
+  --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED \\
+  --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \\
+  --add-opens=java.base/sun.nio.cs=ALL-UNNAMED \\
+  --add-opens=java.base/sun.security.action=ALL-UNNAMED \\
+  --add-opens=java.base/sun.util.calendar=ALL-UNNAMED \\
+  --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED \\
+  --add-opens=java.base/sun.unsafe=ALL-UNNAMED \\
+  --add-opens=java.base/sun.reflect=ALL-UNNAMED \\
+  -Xmx4g \\
+  -XX:+UseG1GC \\
+  -jar ${jarPath}
+"""
+        
+        scriptFile.text = scriptContent
+        scriptFile.setExecutable(true)
+        
+        println "Created run script: ${scriptFile.absolutePath}"
+    }
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation']
+}
+
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = Wrapper.DistributionType.BIN
+}
