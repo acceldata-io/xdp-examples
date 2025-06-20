@@ -111,7 +111,7 @@ The data platform will automatically:
 ./gradlew runHDFSRead
 
 # Using java directly
-java -cp build/libs/hdfs-operations-examples-fat-1.0.0.jar \
+java -cp build/libs/hdfs-operations-examples-fat-1.6.0.jar \
   io.acceldata.examples.hdfs.HDFSReadExample \
   /data/acceldata-examples
 ```
@@ -151,7 +151,7 @@ docker run --rm \
   -v /etc/krb5.conf:/etc/krb5.conf:ro \
   -v /etc/hadoop/conf:/etc/hadoop/conf:ro \
   -v /etc/user.keytab:/etc/user.keytab:ro \
-  acceldata/hdfs-operations-examples:1.0.0
+  acceldata/hdfs-operations-examples:1.6.0
 ```
 
 ## Spark Submit Examples
@@ -163,7 +163,7 @@ spark-submit \
   --class io.acceldata.examples.hdfs.HDFSOperationsExample \
   --master local[*] \
   --conf spark.hadoop.fs.defaultFS=hdfs://localhost:9000 \
-  build/libs/hdfs-operations-examples-fat-1.0.0.jar \
+  build/libs/hdfs-operations-examples-fat-1.6.0.jar \
   hdfs://localhost:9000 \
   /data/acceldata-examples
 ```
