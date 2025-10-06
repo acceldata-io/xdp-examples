@@ -3,10 +3,11 @@ plugins {
     id 'application'
     id 'eclipse'
     id 'idea'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'io.acceldata'
-version = '1.0.0'
+version = '1.6.0'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -52,14 +53,14 @@ dependencies {
 }
 
 application {
-    mainClass = 'io.acceldata.examples.hdfs.HDFSOperationsExample'
+    mainClass = 'io.acceldata.examples.hdfs.HDFSReadExample'
 }
 
 // Task to run HDFS read example
 task runHDFSRead(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'io.acceldata.examples.hdfs.HDFSReadExample'
-    args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://localhost:9000/data/sample.txt']
+    args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://namenode1:8020/user/nitin-upadhyaya/']
 }
 
 // Task to run HDFS write example
@@ -78,36 +79,29 @@ task runHDFSOperations(type: JavaExec) {
 jar {
     archiveBaseName = 'hdfs-operations-examples'
     archiveVersion = version
-    
+
     manifest {
         attributes(
-            'Main-Class': 'io.acceldata.examples.hdfs.HDFSOperationsExample',
-            'Implementation-Title': 'HDFS Operations Examples',
-            'Implementation-Version': version,
-            'Implementation-Vendor': 'Acceldata Inc.'
+                'Main-Class': 'io.acceldata.examples.hdfs.HDFSReadExample',
+                'Implementation-Title': 'HDFS Read Operations Examples',
+                'Implementation-Version': version,
+                'Implementation-Vendor': 'Acceldata Inc.'
         )
     }
 }
 
 // Fat JAR for Spark submission
-task fatJar(type: Jar) {
-    archiveBaseName = 'hdfs-operations-examples-fat'
-    archiveVersion = version
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    
+shadowJar {
+    archiveBaseName.set('hdfs-operations-examples-fat')
+    archiveVersion.set(version)
+    archiveClassifier.set('')
+    mergeServiceFiles() // for Spark, Hadoop
+    zip64 = true
     manifest {
         attributes(
-            'Main-Class': 'io.acceldata.examples.hdfs.HDFSOperationsExample',
-            'Implementation-Title': 'HDFS Operations Examples',
-            'Implementation-Version': version,
-            'Implementation-Vendor': 'Acceldata Inc.'
+                'Main-Class': 'io.acceldata.examples.hdfs.HDFSReadExample'
         )
     }
-    
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    with jar
 }
 
 compileJava {
@@ -125,32 +119,33 @@ test {
 
 // Docker build tasks for containerized deployment
 task buildDockerImage(type: Exec) {
-    dependsOn fatJar
+    dependsOn shadowJar
     description = 'Build Docker image for Kubernetes deployment'
     group = 'docker'
-    
-    commandLine 'docker', 'build', 
-        '-t', "acceldata/hdfs-operations-examples:${version}",
-        '-t', "acceldata/hdfs-operations-examples:latest",
-        '.'
+
+    commandLine 'docker', 'build',
+            '--platform=linux/arm64/v8',
+            '-t', "ravish3876/hdfs-operations-examples:${version}",
+            '-t', "ravish3876/hdfs-operations-examples:latest",
+            '.'
 }
 
 task pushDockerImage(type: Exec) {
     dependsOn buildDockerImage
     description = 'Push Docker image to registry'
     group = 'docker'
-    
-    commandLine 'docker', 'push', "acceldata/hdfs-operations-examples:${version}"
+
+    commandLine 'docker', 'push', "ravish3876/hdfs-operations-examples:${version}"
 }
 
 task runDockerContainer(type: Exec) {
     dependsOn buildDockerImage
     description = 'Run Docker container locally for testing'
     group = 'docker'
-    
+
     commandLine 'docker', 'run', '--rm',
-        '-v', '/etc/krb5.conf:/etc/krb5.conf:ro',
-        '-v', '/etc/hadoop/conf:/etc/hadoop/conf:ro',
-        '-v', '/etc/user.keytab:/etc/user.keytab:ro',
-        "acceldata/hdfs-operations-examples:${version}"
-} 
+            '-v', '/etc/krb5.conf:/etc/krb5.conf:ro',
+            '-v', '/etc/hadoop/conf:/etc/hadoop/conf:ro',
+            '-v', '/etc/hdfs.headless.keytab:/etc/hdfs.headless.keytab:ro',
+            "acceldata/hdfs-operations-examples:${version}"
+}
