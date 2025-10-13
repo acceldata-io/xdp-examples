@@ -20,7 +20,6 @@ ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
     SPARK_USER="185" \
     HADOOP_USER="185"
 
-COPY data /app/data/
 COPY ODP/ /app/ODP/
 COPY S3/ /app/S3/
 COPY jars/ /opt/spark/jars/
