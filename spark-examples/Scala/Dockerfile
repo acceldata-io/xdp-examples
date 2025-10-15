@@ -23,7 +23,7 @@ ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
 
 COPY ODP/ /app/ODP/
 COPY S3/ /app/S3/
-COPY jars/ /opt/spark/jars/
+COPY ../jars/ /opt/spark/jars/
 COPY ODP/target/scala-2.12/hdfsoperations_2.12-0.1.jar /opt/spark/jars/
 COPY S3/target/scala-2.12/s3operations_2.12-0.1.jar /opt/spark/jars/
 

@@ -22,7 +22,7 @@ ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
 
 COPY ODP/ /app/ODP/
 COPY S3/ /app/S3/
-COPY jars/ /opt/spark/jars/
+COPY ../jars/ /opt/spark/jars/
 
 
 
