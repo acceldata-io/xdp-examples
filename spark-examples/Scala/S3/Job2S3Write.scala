@@ -6,18 +6,19 @@ object Job2S3Write {
     // ==========================
     // Environment Variables (Driver)
     // ==========================
-    val accessKey = sys.env.getOrElse("DATASTORE_AWS_ACCESS_KEY_ID", "")
-    val secretKey = sys.env.getOrElse("DATASTORE_AWS_SECRET_ACCESS_KEY", "")
-    val bucketName = sys.env.getOrElse("DATASTORE_S3_BUCKET_NAME", "")
-    val s3FilePath = sys.env.getOrElse("DATASTORE_S3_FILE_PATH")
-    val s3Region = sys.env.getOrElse("DATASTORE_S3_REGION", "us-east-1")
+    val accessKey = sys.env.getOrElse("DATASTORE_AWS_ACCESS_KEY_ID", "Your Access Key")
+    val secretKey = sys.env.getOrElse("DATASTORE_AWS_SECRET_ACCESS_KEY", "Your Secret Key")
+    val bucketName = sys.env.getOrElse("DATASTORE_S3_BUCKET_NAME", "Your Bucket Name")
+    val s3FilePath = sys.env.getOrElse("DATASTORE_S3_FILE_PATH", "Your File Path")
+    val s3FilePathOutput = sys.env.getOrElse("DATASTORE_S3_FILE_PATH_OUTPUT", "Your File Path Output")
+    val s3Region = sys.env.getOrElse("DATASTORE_S3_REGION", "Your Region")
     
     
     // ==========================
     // Initialize Spark Session
     // ==========================
     val spark = SparkSession.builder()
-      .appName("S3ReadApplication")
+      .appName("S3WriteApplication")
       .getOrCreate()
 
     // ==========================
@@ -52,7 +53,7 @@ object Job2S3Write {
     // ==========================
     // Build Output File Path
     // ==========================
-    val outPutFilePath = s"s3a://$bucketName/output/output_scala"
+    val outPutFilePath = s"s3a://$bucketName/$s3FilePathOutput"
 
     // ==========================
     // Write Data to S3

@@ -5,7 +5,7 @@ import os
 # Spark Session
 # ==========================
 spark = SparkSession.builder \
-    .appName("ReadFromS3") \
+    .appName("WriteToS3") \
     .getOrCreate()
 
 # ==========================

@@ -1,0 +1,9 @@
+[0m[[0m[31merror[0m] [0m[0m/Users/nitinupadhyaya/Desktop/Nitin_Upadhyaya/Official/Repos/XDP-Examples/xdp-examples/spark-examples/Scala/S3/Job2S3Write.scala:12:39: not enough arguments for method getOrElse: (key: String, default: => V1)V1.[0m
+[0m[[0m[31merror[0m] [0m[0mUnspecified value parameter default.[0m
+[0m[[0m[31merror[0m] [0m[0m    val s3FilePath = sys.env.getOrElse("DATASTORE_S3_FILE_PATH")[0m
+[0m[[0m[31merror[0m] [0m[0m                                      ^[0m
+[0m[[0m[31merror[0m] [0m[0m/Users/nitinupadhyaya/Desktop/Nitin_Upadhyaya/Official/Repos/XDP-Examples/xdp-examples/spark-examples/Scala/S3/Job2S3Write.scala:13:45: not enough arguments for method getOrElse: (key: String, default: => V1)V1.[0m
+[0m[[0m[31merror[0m] [0m[0mUnspecified value parameter default.[0m
+[0m[[0m[31merror[0m] [0m[0m    val s3FilePathOutput = sys.env.getOrElse("DATASTORE_S3_FILE_PATH_OUTPUT")[0m
+[0m[[0m[31merror[0m] [0m[0m                                            ^[0m
+[0m[[0m[31merror[0m] [0m[0mtwo errors found[0m

@@ -8,7 +8,7 @@ from pyspark.sql.functions import col
 # ==========================
 HDFS_URL = os.environ.get("URL")
 KERBEROS_PRINCIPAL = os.environ.get("KERBEROS_PRINCIPAL")  
-KERBEROS_KEYTAB = os.environ.get("KERBEROS_KEYTAB")
+KERBEROS_KEYTAB = os.environ.get("KERBEROS_KEYTAB","/etc/user.keytab")
 HDFS_FILE_OUTPUT_PATH = os.environ.get("HDFS_FILE_OUTPUT_PATH")
 HDFS_FILE_PATH = os.environ.get("HDFS_FILE_PATH")
 
