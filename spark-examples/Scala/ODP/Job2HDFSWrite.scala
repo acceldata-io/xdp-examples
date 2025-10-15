@@ -7,11 +7,11 @@ object Job2HDFSWrite {
     // ==========================
     // Environment Variables (Driver)
     // ==========================
-    val hdfsUrl = sys.env.getOrElse("URL", "hdfs://localhost:9000")
-    val kerberosPrincipal = sys.env.getOrElse("KERBEROS_PRINCIPAL", "user@REALM")
-    val kerberosKeytab = sys.env.getOrElse("KERBEROS_KEYTAB", "/path/to/keytab")
-    val hdfsFilePath = sys.env.getOrElse("HDFS_FILE_PATH", "/path/to/file.csv")
-    val hdfsFilePathOutput = sys.env.getOrElse("HDFS_FILE_PATH_OUTPUT", "/path/to/output") 
+    val hdfsUrl = sys.env.getOrElse("URL", "")
+    val kerberosPrincipal = sys.env.getOrElse("KERBEROS_PRINCIPAL", "")
+    val kerberosKeytab = sys.env.getOrElse("KERBEROS_KEYTAB", "")
+    val hdfsFilePath = sys.env.getOrElse("HDFS_FILE_PATH", "")
+    val hdfsFilePathOutput = sys.env.getOrElse("HDFS_FILE_PATH_OUTPUT", "") 
     
 
     
