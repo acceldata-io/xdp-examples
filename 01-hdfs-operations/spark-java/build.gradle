@@ -3,10 +3,18 @@ plugins {
     id 'application'
     id 'eclipse'
     id 'idea'
+<<<<<<< HEAD
 }
 
 group = 'io.acceldata'
 version = '1.0.0'
+=======
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'io.acceldata'
+version = '1.6.0'
+>>>>>>> main
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -52,14 +60,22 @@ dependencies {
 }
 
 application {
+<<<<<<< HEAD
     mainClass = 'io.acceldata.examples.hdfs.HDFSOperationsExample'
+=======
+    mainClass = 'io.acceldata.examples.hdfs.HDFSReadExample'
+>>>>>>> main
 }
 
 // Task to run HDFS read example
 task runHDFSRead(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'io.acceldata.examples.hdfs.HDFSReadExample'
+<<<<<<< HEAD
     args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://localhost:9000/data/sample.txt']
+=======
+    args = project.hasProperty('hdfsPath') ? [project.property('hdfsPath')] : ['hdfs://namenode1:8020/user/nitin-upadhyaya/']
+>>>>>>> main
 }
 
 // Task to run HDFS write example
@@ -78,6 +94,7 @@ task runHDFSOperations(type: JavaExec) {
 jar {
     archiveBaseName = 'hdfs-operations-examples'
     archiveVersion = version
+<<<<<<< HEAD
     
     manifest {
         attributes(
@@ -85,11 +102,21 @@ jar {
             'Implementation-Title': 'HDFS Operations Examples',
             'Implementation-Version': version,
             'Implementation-Vendor': 'Acceldata Inc.'
+=======
+
+    manifest {
+        attributes(
+                'Main-Class': 'io.acceldata.examples.hdfs.HDFSReadExample',
+                'Implementation-Title': 'HDFS Read Operations Examples',
+                'Implementation-Version': version,
+                'Implementation-Vendor': 'Acceldata Inc.'
+>>>>>>> main
         )
     }
 }
 
 // Fat JAR for Spark submission
+<<<<<<< HEAD
 task fatJar(type: Jar) {
     archiveBaseName = 'hdfs-operations-examples-fat'
     archiveVersion = version
@@ -108,6 +135,19 @@ task fatJar(type: Jar) {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     with jar
+=======
+shadowJar {
+    archiveBaseName.set('hdfs-operations-examples-fat')
+    archiveVersion.set(version)
+    archiveClassifier.set('')
+    mergeServiceFiles() // for Spark, Hadoop
+    zip64 = true
+    manifest {
+        attributes(
+                'Main-Class': 'io.acceldata.examples.hdfs.HDFSReadExample'
+        )
+    }
+>>>>>>> main
 }
 
 compileJava {
@@ -125,6 +165,7 @@ test {
 
 // Docker build tasks for containerized deployment
 task buildDockerImage(type: Exec) {
+<<<<<<< HEAD
     dependsOn fatJar
     description = 'Build Docker image for Kubernetes deployment'
     group = 'docker'
@@ -133,20 +174,37 @@ task buildDockerImage(type: Exec) {
         '-t', "acceldata/hdfs-operations-examples:${version}",
         '-t', "acceldata/hdfs-operations-examples:latest",
         '.'
+=======
+    dependsOn shadowJar
+    description = 'Build Docker image for Kubernetes deployment'
+    group = 'docker'
+
+    commandLine 'docker', 'build',
+            '--platform=linux/arm64/v8',
+            '-t', "ravish3876/hdfs-operations-examples:${version}",
+            '-t', "ravish3876/hdfs-operations-examples:latest",
+            '.'
+>>>>>>> main
 }
 
 task pushDockerImage(type: Exec) {
     dependsOn buildDockerImage
     description = 'Push Docker image to registry'
     group = 'docker'
+<<<<<<< HEAD
     
     commandLine 'docker', 'push', "acceldata/hdfs-operations-examples:${version}"
+=======
+
+    commandLine 'docker', 'push', "ravish3876/hdfs-operations-examples:${version}"
+>>>>>>> main
 }
 
 task runDockerContainer(type: Exec) {
     dependsOn buildDockerImage
     description = 'Run Docker container locally for testing'
     group = 'docker'
+<<<<<<< HEAD
     
     commandLine 'docker', 'run', '--rm',
         '-v', '/etc/krb5.conf:/etc/krb5.conf:ro',
@@ -154,3 +212,12 @@ task runDockerContainer(type: Exec) {
         '-v', '/etc/user.keytab:/etc/user.keytab:ro',
         "acceldata/hdfs-operations-examples:${version}"
 } 
+=======
+
+    commandLine 'docker', 'run', '--rm',
+            '-v', '/etc/krb5.conf:/etc/krb5.conf:ro',
+            '-v', '/etc/hadoop/conf:/etc/hadoop/conf:ro',
+            '-v', '/etc/hdfs.headless.keytab:/etc/hdfs.headless.keytab:ro',
+            "acceldata/hdfs-operations-examples:${version}"
+}
+>>>>>>> main
