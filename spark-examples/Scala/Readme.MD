@@ -1,5 +1,9 @@
 # Scala Spark Examples
 
+## Prerequisites
+
+Before building the Docker image, please ensure you have completed the prerequisites as outlined in [prerequiste.md](../prerequiste.md). This includes downloading the required JAR files (AWS SDK and Hadoop AWS) for S3 operations.
+
 ## Docker Build Commands
 
 ```bash
@@ -15,6 +19,8 @@ docker build --platform linux/amd64 --build-arg BASE_IMAGE=public.ecr.aws/l7l2s8
 # Build with platform specification
 docker build --platform linux/amd64 -t nitinupadhyayaacceldata/xdpexamples:Scala-Example .
 ```
+
+
 
 ## Environment Variables
 
