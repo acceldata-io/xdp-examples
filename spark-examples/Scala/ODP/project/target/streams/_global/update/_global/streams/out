@@ -1,0 +1,7 @@
+[0m[[0m[0mdebug[0m] [0m[0mnot up to date. inChanged = true, force = false[0m
+[0m[[0m[0mdebug[0m] [0m[0mUpdating ProjectRef(uri("file:/Users/nitinupadhyaya/Desktop/Nitin_Upadhyaya/Official/Repos/XDP-Examples/xdp-examples/spark-examples/Scala/ODP/project/"), "odp-build")...[0m
+[0m[[0m[0minfo[0m] [0m[0mUpdating odp-build[0m
+[0m[[0m[0minfo[0m] [0m[0mResolved odp-build dependencies[0m
+[0m[[0m[0minfo[0m] [0m[0mFetching artifacts of odp-build[0m
+[0m[[0m[0minfo[0m] [0m[0mFetched artifacts of odp-build[0m
+[0m[[0m[0mdebug[0m] [0m[0mDone updating ProjectRef(uri("file:/Users/nitinupadhyaya/Desktop/Nitin_Upadhyaya/Official/Repos/XDP-Examples/xdp-examples/spark-examples/Scala/ODP/project/"), "odp-build")[0m
