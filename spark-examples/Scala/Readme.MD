@@ -4,6 +4,22 @@
 
 Before building the Docker image, please ensure you have completed the prerequisites as outlined in [prerequiste.md](../prerequiste.md). This includes downloading the required JAR files (AWS SDK and Hadoop AWS) for S3 operations.
 
+## SBT Build Commands
+
+```bash
+# Compile the project
+sbt compile
+
+# Package the project into a JAR file
+sbt package
+
+# Clean and package (recommended for fresh builds)
+sbt clean package
+
+# Create an assembly JAR with all dependencies (if using sbt-assembly plugin)
+sbt assembly
+```
+
 ## Docker Build Commands
 
 ```bash
