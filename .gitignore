@@ -3,3 +3,11 @@
 06-s3-gpu-spark/target/
 06-s3-gpu-spark/project/target/
 06-s3-gpu-spark/project/project/target/
+
+spark-examples/Scala/ODP/target/
+spark-examples/Scala/ODP/project/target/
+spark-examples/Scala/ODP/project/project/target/
+spark-examples/Scala/S3/target/
+spark-examples/Scala/S3/project/target/
+spark-examples/Scala/S3/project/project/target/
+**/.gradle/
