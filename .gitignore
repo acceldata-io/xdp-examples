@@ -1,8 +1,8 @@
 .idea/
 # Ignore build outputs for 06-s3-gpu-spark
-06-s3-gpu-spark/target/
-06-s3-gpu-spark/project/target/
-06-s3-gpu-spark/project/project/target/
+06-s3-spark/target/
+06-s3-spark/project/target/
+06-s3-spark/project/project/target/
 
 spark-examples/Scala/ODP/target/
 spark-examples/Scala/ODP/project/target/
