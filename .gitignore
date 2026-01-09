@@ -10,3 +10,5 @@ spark-examples/Scala/ODP/project/project/target/
 spark-examples/Scala/S3/target/
 spark-examples/Scala/S3/project/target/
 spark-examples/Scala/S3/project/project/target/
+01-hdfs-operations/spark-java/.gradle/
+02-hive-operations/spark-java/.gradle/
