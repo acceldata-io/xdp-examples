@@ -1,0 +1,5 @@
+# Task 2: Transform & Load Dependencies
+# PySpark (distributed processing - uses Spark's native ABFS support)
+# All transformations and I/O are done through Spark DataFrames
+pyspark==3.5.0
+py4j==0.10.9.7
