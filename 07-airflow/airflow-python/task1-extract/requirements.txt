@@ -1,0 +1,7 @@
+# Task 1: Extract Dependencies
+# API calls (runs on driver)
+requests==2.31.0
+
+# PySpark (distributed processing - uses Spark's native ABFS support)
+pyspark==3.5.0
+py4j==0.10.9.7
